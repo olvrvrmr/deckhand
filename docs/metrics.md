@@ -150,6 +150,85 @@ This metric can be used to observe:
 
 ------------------------------------------------------------------------
 
+## deckhand_backup_running
+
+Indicates whether a backup is currently in progress for a container.
+
+**Type**
+
+    Gauge
+
+**Labels**
+
+  Label       Description
+  ----------- ------------------------------
+  container   Name of the Docker container
+
+**Values**
+
+  Value   Meaning
+  ------- -----------------------
+  1       Backup in progress
+  0       Idle
+
+**Example**
+
+    deckhand_backup_running{container="sonarr"} 1
+
+------------------------------------------------------------------------
+
+## deckhand_last_backup_status
+
+Result of the last completed backup attempt for a container.
+
+**Type**
+
+    Gauge
+
+**Labels**
+
+  Label       Description
+  ----------- ------------------------------
+  container   Name of the Docker container
+
+**Values**
+
+  Value   Meaning
+  ------- -----------------------
+  1       Last attempt succeeded
+  0       Last attempt failed
+
+**Example**
+
+    deckhand_last_backup_status{container="sonarr"} 1
+    deckhand_last_backup_status{container="radarr"} 0
+
+This metric always reflects the most recent run, regardless of outcome.
+Combined with `deckhand_last_backup_timestamp`, it provides a complete
+picture: the timestamp shows freshness of the last valid restore point,
+while this metric shows whether the latest attempt succeeded.
+
+------------------------------------------------------------------------
+
+## deckhand_containers_discovered
+
+Number of containers with `deckhand.enable=true` and a configured backup
+path, as discovered in the last backup run. Stop-only containers (no
+path defined) are excluded.
+
+**Type**
+
+    Gauge
+
+**Example**
+
+    deckhand_containers_discovered 5
+
+Use this as a sanity check against `deckhand_backups_total{status="success"}`:
+after a clean run both values should match.
+
+------------------------------------------------------------------------
+
 # Example Prometheus Configuration
 
 Example scrape configuration:
@@ -193,6 +272,20 @@ scrape_configs:
 
 ------------------------------------------------------------------------
 
+## Last backup failed alert
+
+``` yaml
+- alert: DeckhandLastBackupFailed
+  expr: deckhand_last_backup_status == 0
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Last backup failed for {{ $labels.container }}"
+```
+
+------------------------------------------------------------------------
+
 # Example Grafana Panels
 
 Typical Grafana dashboard panels:
@@ -209,8 +302,6 @@ Typical Grafana dashboard panels:
 
 Possible future metrics include:
 
-    deckhand_backup_running
-    deckhand_containers_discovered_total
     deckhand_rsync_errors_total
 
 These may be added as Deckhand evolves.
