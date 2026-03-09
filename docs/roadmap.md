@@ -72,8 +72,8 @@ Introduce GitHub Actions for:
 
 -   linting
 -   ✅ container build
--   ✅ automated releases
--   ✅ version tagging
+-   ✅ automated releases (triggered by git tag push)
+-   ✅ version tagging (manual tag → automated image tags + GitHub Release)
 
 ------------------------------------------------------------------------
 
