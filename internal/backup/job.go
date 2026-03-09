@@ -90,6 +90,10 @@ func (j *Job) run(ctx context.Context) error {
 
 	// sync paths for each container
 	for _, c := range containers {
+		if len(c.Paths) == 0 {
+			slog.Warn("no paths defined, skipping sync", "container", c.Name)
+			continue
+		}
 		for _, path := range c.Paths {
 			dst := fmt.Sprintf("%s/%s", j.cfg.Destination, c.Name)
 			if err := j.rsync.Sync(path, dst); err != nil {
