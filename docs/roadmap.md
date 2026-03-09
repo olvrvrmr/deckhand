@@ -127,15 +127,20 @@ This reduces downtime for some services.
 
 ------------------------------------------------------------------------
 
-## Backup metrics
+## Backup metrics ✅
 
 Expose Prometheus metrics such as:
 
--   `deckhand_backups_total`
--   `deckhand_backup_duration`
--   `deckhand_backup_failures`
+-   ✅ `deckhand_backups_total`
+-   ✅ `deckhand_backup_duration_seconds`
+-   ✅ `deckhand_backup_failures_total`
+-   ✅ `deckhand_backup_running`
+-   ✅ `deckhand_last_backup_status`
+-   ✅ `deckhand_last_backup_timestamp`
+-   ✅ `deckhand_bytes_transferred_total`
+-   ✅ `deckhand_containers_discovered`
 
-This allows observability in homelab monitoring stacks.
+See [metrics.md](metrics.md) for full reference and included Grafana dashboard.
 
 ------------------------------------------------------------------------
 

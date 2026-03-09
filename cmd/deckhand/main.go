@@ -7,6 +7,7 @@ import (
 	"github.com/olvrvrmr/deckhand/internal/backup"
 	"github.com/olvrvrmr/deckhand/internal/config"
 	"github.com/olvrvrmr/deckhand/internal/docker"
+	"github.com/olvrvrmr/deckhand/internal/metrics"
 	"github.com/robfig/cron/v3"
 )
 
@@ -26,6 +27,11 @@ func main() {
 	}
 
 	job := backup.New(cfg, dockerClient)
+
+	if !cfg.RunOnce {
+		metrics.Serve(cfg.MetricsAddr)
+		slog.Info("metrics server started", "addr", cfg.MetricsAddr)
+	}
 
 	if cfg.RunOnce {
 		slog.Info("running once")

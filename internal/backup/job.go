@@ -9,6 +9,7 @@ import (
 
 	"github.com/olvrvrmr/deckhand/internal/config"
 	"github.com/olvrvrmr/deckhand/internal/docker"
+	"github.com/olvrvrmr/deckhand/internal/metrics"
 	"github.com/olvrvrmr/deckhand/internal/notify"
 	"github.com/olvrvrmr/deckhand/internal/rsync"
 )
@@ -36,25 +37,36 @@ func (j *Job) Run() {
 	start := time.Now()
 	slog.Info("backup started")
 
-	if err := j.run(ctx); err != nil {
-		slog.Error("backup failed", "error", err, "duration", time.Since(start))
+	count, err := j.run(ctx)
+	duration := time.Since(start)
+
+	if err != nil {
+		slog.Error("backup failed", "error", err, "duration", duration)
 		notify.Send(j.cfg.NotifyURL, false, err.Error())
 		return
 	}
 
-	slog.Info("backup completed", "duration", time.Since(start))
+	slog.Info("backup completed", "duration", duration, "containers", count)
 	notify.Send(j.cfg.NotifyURL, true, "")
 }
 
-func (j *Job) run(ctx context.Context) error {
+func (j *Job) run(ctx context.Context) (int, error) {
 	containers, err := j.docker.GetBackupContainers(ctx)
 	if err != nil {
-		return fmt.Errorf("discover containers: %w", err)
+		return 0, fmt.Errorf("discover containers: %w", err)
 	}
+
+	backupable := 0
+	for _, c := range containers {
+		if c.Path != "" {
+			backupable++
+		}
+	}
+	metrics.ContainersDiscovered.Set(float64(backupable))
 
 	if len(containers) == 0 {
 		slog.Info("no containers with deckhand.enable=true found")
-		return nil
+		return 0, nil
 	}
 
 	// stop containers that need it (priority order)
@@ -63,7 +75,7 @@ func (j *Job) run(ctx context.Context) error {
 		if c.Stop {
 			slog.Info("stopping container", "name", c.Name)
 			if err := j.docker.Stop(ctx, c.ID); err != nil {
-				return fmt.Errorf("stop %s: %w", c.Name, err)
+				return 0, fmt.Errorf("stop %s: %w", c.Name, err)
 			}
 			stopped = append(stopped, c.ID)
 		}
@@ -84,22 +96,40 @@ func (j *Job) run(ctx context.Context) error {
 		if c.PreExec != "" && !c.Stop {
 			slog.Info("running pre-exec", "container", c.Name, "cmd", c.PreExec)
 			if err := j.docker.Exec(ctx, c.ID, c.PreExec); err != nil {
-				return fmt.Errorf("pre-exec %s: %w", c.Name, err)
+				return 0, fmt.Errorf("pre-exec %s: %w", c.Name, err)
 			}
 		}
 	}
 
 	// sync each container's path
+	synced := 0
 	for _, c := range containers {
 		if c.Path == "" {
 			slog.Warn("no path defined, skipping sync", "container", c.Name)
 			continue
 		}
+
+		start := time.Now()
 		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, filepath.Base(c.Path))
-		if err := j.rsync.Sync(c.Path, dst, c.Excludes); err != nil {
-			return err
+		metrics.BackupRunning.WithLabelValues(c.Name).Set(1)
+		result, err := j.rsync.Sync(c.Path, dst, c.Excludes)
+		metrics.BackupRunning.WithLabelValues(c.Name).Set(0)
+		duration := time.Since(start)
+
+		if err != nil {
+			metrics.BackupsTotal.WithLabelValues(c.Name, "failure").Inc()
+			metrics.BackupFailuresTotal.WithLabelValues(c.Name).Inc()
+			metrics.LastBackupStatus.WithLabelValues(c.Name).Set(0)
+			return synced, err
 		}
+
+		metrics.BackupsTotal.WithLabelValues(c.Name, "success").Inc()
+		metrics.BackupDuration.WithLabelValues(c.Name).Observe(duration.Seconds())
+		metrics.LastBackupTimestamp.WithLabelValues(c.Name).SetToCurrentTime()
+		metrics.BytesTransferredTotal.WithLabelValues(c.Name).Add(float64(result.BytesTransferred))
+		metrics.LastBackupStatus.WithLabelValues(c.Name).Set(1)
+		synced++
 	}
 
-	return nil
+	return synced, nil
 }
