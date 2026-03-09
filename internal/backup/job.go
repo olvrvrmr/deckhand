@@ -56,6 +56,14 @@ func (j *Job) run(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("discover containers: %w", err)
 	}
 
+	backupable := 0
+	for _, c := range containers {
+		if c.Path != "" {
+			backupable++
+		}
+	}
+	metrics.ContainersDiscovered.Set(float64(backupable))
+
 	if len(containers) == 0 {
 		slog.Info("no containers with deckhand.enable=true found")
 		return 0, nil
@@ -103,12 +111,15 @@ func (j *Job) run(ctx context.Context) (int, error) {
 
 		start := time.Now()
 		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, filepath.Base(c.Path))
+		metrics.BackupRunning.WithLabelValues(c.Name).Set(1)
 		result, err := j.rsync.Sync(c.Path, dst, c.Excludes)
+		metrics.BackupRunning.WithLabelValues(c.Name).Set(0)
 		duration := time.Since(start)
 
 		if err != nil {
 			metrics.BackupsTotal.WithLabelValues(c.Name, "failure").Inc()
 			metrics.BackupFailuresTotal.WithLabelValues(c.Name).Inc()
+			metrics.LastBackupStatus.WithLabelValues(c.Name).Set(0)
 			return synced, err
 		}
 
@@ -116,6 +127,7 @@ func (j *Job) run(ctx context.Context) (int, error) {
 		metrics.BackupDuration.WithLabelValues(c.Name).Observe(duration.Seconds())
 		metrics.LastBackupTimestamp.WithLabelValues(c.Name).SetToCurrentTime()
 		metrics.BytesTransferredTotal.WithLabelValues(c.Name).Add(float64(result.BytesTransferred))
+		metrics.LastBackupStatus.WithLabelValues(c.Name).Set(1)
 		synced++
 	}
 

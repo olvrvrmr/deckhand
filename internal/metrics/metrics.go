@@ -38,6 +38,24 @@ var (
 		Name: "deckhand_bytes_transferred_total",
 		Help: "Total bytes transferred by rsync per container.",
 	}, []string{"container"})
+
+	// BackupRunning indicates whether a backup is currently running for a container (1=running, 0=idle)
+	BackupRunning = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "deckhand_backup_running",
+		Help: "1 if a backup is currently in progress for the container, 0 otherwise.",
+	}, []string{"container"})
+
+	// LastBackupStatus records the result of the last backup per container (1=success, 0=failure)
+	LastBackupStatus = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "deckhand_last_backup_status",
+		Help: "Result of the last backup for the container: 1=success, 0=failure.",
+	}, []string{"container"})
+
+	// ContainersDiscovered tracks how many containers were discovered in the last backup run
+	ContainersDiscovered = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "deckhand_containers_discovered",
+		Help: "Number of containers with deckhand.enable=true discovered in the last backup run.",
+	})
 )
 
 func init() {
@@ -47,6 +65,9 @@ func init() {
 		BackupDuration,
 		LastBackupTimestamp,
 		BytesTransferredTotal,
+		BackupRunning,
+		LastBackupStatus,
+		ContainersDiscovered,
 	)
 }
 
