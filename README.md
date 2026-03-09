@@ -119,6 +119,29 @@ Deckhand is ideal for:
 
 ------------------------------------------------------------------------
 
+## Observability
+
+Deckhand exposes a Prometheus metrics endpoint at `:2112/metrics`.
+
+Enable it by setting `METRICS_ADDR=:2112` in your environment. A
+pre-built Grafana dashboard is available at
+[docs/deckhand_backup.json](docs/deckhand_backup.json).
+
+Key metrics:
+
+  Metric                              Description
+  ----------------------------------- -----------------------------------------------
+  `deckhand_backups_total`            Total backup attempts (labeled by status)
+  `deckhand_backup_running`           1 while a backup is in progress
+  `deckhand_last_backup_status`       1 = last run succeeded, 0 = last run failed
+  `deckhand_last_backup_timestamp`    Unix timestamp of last successful backup
+  `deckhand_containers_discovered`    Containers with a backup path, last run
+  `deckhand_bytes_transferred_total`  Total bytes transferred by rsync
+
+See [docs/metrics.md](docs/metrics.md) for the full reference.
+
+------------------------------------------------------------------------
+
 ## Restore
 
 Because Deckhand stores backups as plain files, restoring is just an

@@ -286,15 +286,25 @@ scrape_configs:
 
 ------------------------------------------------------------------------
 
-# Example Grafana Panels
+# Grafana Dashboard
 
-Typical Grafana dashboard panels:
+A pre-built Grafana dashboard is included at `docs/deckhand_backup.json`.
+Import it via **Dashboards → Import → Upload JSON file**.
 
--   Backup count per container
--   Backup duration
--   Backup failures
--   Last backup age
--   Total data transferred
+![Deckhand Grafana Dashboard](screenshots/grafana_dashboard.jpg)
+
+The dashboard includes:
+
+-   **Containers Discovered** — sanity check stat
+-   **Active Backups** — live running count
+-   **Last Backup Failed** — count of containers whose last run failed
+-   **Oldest Backup Age** — staleness indicator across all containers
+-   **Container Backup Status** — per-container table with last backup
+    time, age, last result, running state, failures (24h), avg duration,
+    and bytes transferred
+-   **Backup Failures Over Time** — bar chart per container
+-   **Bytes Transferred Over Time** — bar chart per container
+-   **Average Backup Duration Over Time** — line chart per container
 
 ------------------------------------------------------------------------
 
