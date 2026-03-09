@@ -91,7 +91,7 @@ func (j *Job) run(ctx context.Context) error {
 	// sync paths for each container
 	for _, c := range containers {
 		for _, path := range c.Paths {
-			dst := fmt.Sprintf("%s/%s%s", j.cfg.Destination, c.Name, path)
+			dst := fmt.Sprintf("%s/%s", j.cfg.Destination, c.Name)
 			if err := j.rsync.Sync(path, dst); err != nil {
 				return err
 			}

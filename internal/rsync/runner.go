@@ -18,6 +18,7 @@ func (r *Runner) Sync(src, dst string) error {
 	args := []string{
 		"-avz",
 		"--delete",
+		"--mkpath",
 		"-e", fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no", r.SSHKeyPath),
 	}
 	if r.DryRun {
