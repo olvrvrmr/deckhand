@@ -1,0 +1,33 @@
+services:
+  deckhand:
+    image: ghcr.io/obornet/deckhand:latest
+    container_name: deckhand
+    restart: unless-stopped
+    environment:
+      - BACKUP_CRON=0 2 * * *
+      - BACKUP_DESTINATION=user@nas:/mnt/backups/docker
+      - BACKUP_SSH_KEY=/keys/id_rsa
+      - BACKUP_DRY_RUN=false
+      - BACKUP_NOTIFY_URL=https://n8n.example.com/webhook/backup  # optional
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ~/.ssh/id_rsa:/keys/id_rsa:ro
+      - /opt/homelab/appdata:/opt/homelab/appdata:ro  # mount paths you want to back up
+
+  # Example: a service with backup labels
+  myapp:
+    image: myapp:latest
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=true"                        # stop before sync, restart after
+      - "deckhand.paths=/opt/homelab/appdata/myapp" # host path(s) to sync
+      - "deckhand.priority=10"                      # lower = stopped first
+
+  # Example: pre-exec hook instead of stopping (e.g. sqlite checkpoint)
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=false"
+      - "deckhand.pre-exec=python manage.py dbbackup"
+      - "deckhand.paths=/opt/homelab/appdata/paperless-ngx"
