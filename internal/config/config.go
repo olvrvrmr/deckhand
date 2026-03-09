@@ -23,7 +23,7 @@ func Load() *Config {
 		Destination:  getEnv("BACKUP_DESTINATION", ""),
 		SSHKeyPath:   getEnv("BACKUP_SSH_KEY", "/keys/id_rsa"),
 		NotifyURL:    getEnv("BACKUP_NOTIFY_URL", ""),
-		MetricsAddr:  getEnv("METRICS_ADDR", ":9090"),
+		MetricsAddr:  getEnv("METRICS_ADDR", ":2112"),
 		DryRun:       getEnvBool("BACKUP_DRY_RUN", false),
 		RunOnce:      getEnvBool("BACKUP_RUN_ONCE", false),
 	}

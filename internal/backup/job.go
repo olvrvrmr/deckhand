@@ -39,18 +39,13 @@ func (j *Job) Run() {
 
 	count, err := j.run(ctx)
 	duration := time.Since(start)
-	metrics.BackupDuration.Set(duration.Seconds())
 
 	if err != nil {
 		slog.Error("backup failed", "error", err, "duration", duration)
-		metrics.BackupFailure.Inc()
 		notify.Send(j.cfg.NotifyURL, false, err.Error())
 		return
 	}
 
-	metrics.BackupSuccess.Inc()
-	metrics.BackupLastSuccess.SetToCurrentTime()
-	metrics.ContainersBackedUp.Set(float64(count))
 	slog.Info("backup completed", "duration", duration, "containers", count)
 	notify.Send(j.cfg.NotifyURL, true, "")
 }
@@ -105,10 +100,22 @@ func (j *Job) run(ctx context.Context) (int, error) {
 			slog.Warn("no path defined, skipping sync", "container", c.Name)
 			continue
 		}
+
+		start := time.Now()
 		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, filepath.Base(c.Path))
-		if err := j.rsync.Sync(c.Path, dst, c.Excludes); err != nil {
+		result, err := j.rsync.Sync(c.Path, dst, c.Excludes)
+		duration := time.Since(start)
+
+		if err != nil {
+			metrics.BackupsTotal.WithLabelValues(c.Name, "failure").Inc()
+			metrics.BackupFailuresTotal.WithLabelValues(c.Name).Inc()
 			return synced, err
 		}
+
+		metrics.BackupsTotal.WithLabelValues(c.Name, "success").Inc()
+		metrics.BackupDuration.WithLabelValues(c.Name).Observe(duration.Seconds())
+		metrics.LastBackupTimestamp.WithLabelValues(c.Name).SetToCurrentTime()
+		metrics.BytesTransferredTotal.WithLabelValues(c.Name).Add(float64(result.BytesTransferred))
 		synced++
 	}
 

@@ -1,12 +1,22 @@
 package rsync
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 )
+
+var sentBytesRe = regexp.MustCompile(`sent ([\d,]+) bytes`)
+
+type Result struct {
+	BytesTransferred int64
+}
 
 type Runner struct {
 	SSHKeyPath string
@@ -14,7 +24,7 @@ type Runner struct {
 	DryRun     bool
 }
 
-func (r *Runner) Sync(src, dst string, excludes []string) error {
+func (r *Runner) Sync(src, dst string, excludes []string) (Result, error) {
 	args := []string{
 		"-avz",
 		"--delete",
@@ -35,12 +45,28 @@ func (r *Runner) Sync(src, dst string, excludes []string) error {
 	args = append(args, src, dst)
 
 	slog.Info("rsync", "src", src, "dst", dst, "dry_run", r.DryRun)
+
+	var buf bytes.Buffer
 	cmd := exec.Command("rsync", args...)
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("rsync %s → %s: %w", src, dst, err)
+		return Result{}, fmt.Errorf("rsync %s → %s: %w", src, dst, err)
 	}
-	return nil
+
+	return Result{BytesTransferred: parseSentBytes(buf.String())}, nil
+}
+
+func parseSentBytes(output string) int64 {
+	m := sentBytesRe.FindStringSubmatch(output)
+	if len(m) < 2 {
+		return 0
+	}
+	cleaned := strings.ReplaceAll(m[1], ",", "")
+	n, err := strconv.ParseInt(cleaned, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return n
 }
