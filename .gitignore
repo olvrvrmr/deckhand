@@ -1,0 +1,12 @@
+# binary
+deckhand
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
