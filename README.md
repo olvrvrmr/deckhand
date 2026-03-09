@@ -31,20 +31,6 @@ back up Docker appdata:
 
 ------------------------------------------------------------------------
 
-## Architecture
-
-Docker Host\
-│\
-│ container labels\
-▼\
-Deckhand container\
-│\
-│ rsync\
-▼\
-NAS / remote storage
-
-------------------------------------------------------------------------
-
 ## Quick start
 
 Add Deckhand to your Docker host:
@@ -95,6 +81,8 @@ configured path on schedule.
 ------------------------------------------------------------------------
 
 ## Label reference
+
+- [Label specification](docs/labels.md)
 
 Deckhand is controlled entirely via container labels.
 
