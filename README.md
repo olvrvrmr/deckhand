@@ -154,6 +154,13 @@ docker compose up -d
 
 ------------------------------------------------------------------------
 
+## Development
+
+Deckhand was developed with the assistance of AI coding tools.
+Design decisions, architecture and maintenance are managed by the project maintainer.
+
+------------------------------------------------------------------------
+
 ## License
 
 MIT
