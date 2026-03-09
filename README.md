@@ -1,63 +1,55 @@
 # deckhand
 
-A lightweight, rsync-based backup tool for Docker environments.
+![GitHub
+release](https://img.shields.io/github/v/release/olvrvrmr/deckhand)
+![License](https://img.shields.io/github/license/olvrvrmr/deckhand)
 
-Deckhand discovers containers via Docker labels, optionally stops them before syncing, and rsyncs their data to a remote destination (e.g. a NAS over SSH). No tarballs, no proprietary formats — just files in the right place.
+**Label-driven Docker appdata backups with rsync.**
 
-## How it works
+Docker containers are easy to redeploy, but their persistent data is
+not.
 
-1. Discovers running containers with `deckhand.enable=true`
-2. Stops containers marked with `deckhand.stop=true` (in priority order)
-3. Runs any `deckhand.pre-exec` hooks
-4. rsyncs each container's configured path to the destination
-5. Restarts stopped containers (always — even on error)
-6. Optionally fires a webhook with the result
+Deckhand discovers Docker containers via labels, optionally stops them
+for consistency, and rsyncs their persistent data to a remote
+destination such as a NAS over SSH.
 
-## Container labels
+No proprietary backup format. No archives. No complex restore process.\
+Just your files, synced safely and ready to restore.
 
-| Label | Required | Description |
-|---|---|---|
-| `deckhand.enable` | yes | Set to `true` to include this container |
-| `deckhand.path` | yes | Single host path to sync |
-| `deckhand.stop` | no | Stop container during sync (default: `false`) |
-| `deckhand.exclude` | no | Comma-separated rsync exclude patterns |
-| `deckhand.pre-exec` | no | Command to run inside the container before sync |
-| `deckhand.priority` | no | Stop/start order — lower number = stopped first (default: `0`) |
+------------------------------------------------------------------------
 
-### Multi-container apps (e.g. app + database)
+## Why Deckhand?
 
-For services with a separate database container, only add `deckhand.path` to **one** container (typically the database). Add `deckhand.enable=true` and `deckhand.stop=true` to the app container(s) so they are stopped before the database — but omit `deckhand.path` since the data lives in the database container's directory.
+Deckhand is built for people who want a simple and predictable way to
+back up Docker appdata:
 
-```yaml
-  myapp:
-    labels:
-      - "deckhand.enable=true"
-      - "deckhand.stop=true"
-      - "deckhand.priority=5"   # stopped first
+-   **Docker-native**: opt containers in with labels
+-   **rsync-based**: backups stay readable and portable
+-   **restore-friendly**: sync files back and start your containers
+-   **consistency-aware**: optionally stop containers before backup
+-   **homelab-friendly**: ideal for appdata-to-NAS workflows
 
-  myapp-db:
-    labels:
-      - "deckhand.enable=true"
-      - "deckhand.stop=true"
-      - "deckhand.path=/opt/appdata/myapp"  # backs up everything under myapp/
-      - "deckhand.priority=10"  # stopped after app
-```
+------------------------------------------------------------------------
 
-## Configuration
+## Architecture
 
-| Environment variable | Default | Description |
-|---|---|---|
-| `BACKUP_DESTINATION` | *(required)* | rsync destination, e.g. `user@nas:/mnt/backups/docker` |
-| `BACKUP_CRON` | `0 2 * * *` | Cron schedule |
-| `BACKUP_SSH_KEY` | `/keys/id_rsa` | Path to SSH private key |
-| `BACKUP_RSYNC_ARGS` | | Extra args passed to rsync |
-| `BACKUP_NOTIFY_URL` | | Webhook URL called on completion/failure |
-| `BACKUP_DRY_RUN` | `false` | Run rsync with `--dry-run` |
-| `BACKUP_RUN_ONCE` | `false` | Run once and exit (useful for testing) |
+Docker Host\
+│\
+│ container labels\
+▼\
+Deckhand container\
+│\
+│ rsync\
+▼\
+NAS / remote storage
 
-## Usage
+------------------------------------------------------------------------
 
-```yaml
+## Quick start
+
+Add Deckhand to your Docker host:
+
+``` yaml
 services:
   deckhand:
     image: ghcr.io/olvrvrmr/deckhand:latest
@@ -69,31 +61,88 @@ services:
       - BACKUP_CRON=0 2 * * *
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/appdata:/mnt/appdata
       - /path/to/ssh/key:/keys/id_rsa:ro
+```
 
+Then label any container you want to back up:
+
+``` yaml
+services:
   myapp:
     image: myapp:latest
     labels:
       - "deckhand.enable=true"
       - "deckhand.stop=true"
-      - "deckhand.path=/opt/appdata/myapp"
+      - "deckhand.path=/mnt/appdata/myapp"
       - "deckhand.exclude=logs,*.tmp"
 ```
 
-## Recovery
+That's it. Deckhand will discover the container and back up the
+configured path on schedule.
 
-Restoring is as simple as rsyncing back from the destination and starting your containers:
+------------------------------------------------------------------------
 
-```bash
-rsync -av user@nas:/mnt/backups/docker/myapp/ /opt/appdata/myapp/
+## How it works
+
+1.  Discovers containers with `deckhand.enable=true`
+2.  Stops containers marked with `deckhand.stop=true`
+3.  Runs any `deckhand.pre-exec` hooks
+4.  rsyncs configured paths to the backup destination
+5.  Restarts stopped containers, even if an error occurs
+6.  Optionally sends a webhook notification
+
+------------------------------------------------------------------------
+
+## Label reference
+
+Deckhand is controlled entirely via container labels.
+
+  Label                 Description
+  --------------------- ----------------------------------------------
+  `deckhand.enable`     Enables backup for the container
+  `deckhand.path`       Path inside the host filesystem to back up
+  `deckhand.stop`       Stop container before backup for consistency
+  `deckhand.exclude`    Comma-separated list of patterns to exclude
+  `deckhand.pre-exec`   Command to run before backup
+  `deckhand.priority`   Backup order priority
+
+Example:
+
+``` yaml
+labels:
+  - "deckhand.enable=true"
+  - "deckhand.path=/mnt/appdata/myapp"
+  - "deckhand.stop=true"
+  - "deckhand.exclude=cache,tmp"
+```
+
+------------------------------------------------------------------------
+
+## Typical use cases
+
+Deckhand is ideal for:
+
+-   Homelab Docker servers backing up appdata to a NAS
+-   Self-hosted environments where restore simplicity is important
+-   Systems where traditional backup tools are too heavy
+-   Environments where Docker containers should be backed up
+    automatically via labels
+
+------------------------------------------------------------------------
+
+## Restore
+
+Because Deckhand stores backups as plain files, restoring is just an
+rsync away.
+
+``` bash
+rsync -av user@nas:/mnt/backups/docker/myapp/ /mnt/appdata/myapp/
 docker compose up -d
 ```
 
-## Socket proxy
+------------------------------------------------------------------------
 
-If you use a Docker socket proxy (recommended), ensure the following permissions are enabled:
+## License
 
-```
-CONTAINERS=1
-INFO=1
-```
+MIT
