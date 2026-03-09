@@ -12,22 +12,39 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ~/.ssh/id_rsa:/keys/id_rsa:ro
-      - /opt/homelab/appdata:/opt/homelab/appdata:ro  # mount paths you want to back up
 
-  # Example: a service with backup labels
+  # Example: stop container during backup
   myapp:
     image: myapp:latest
     labels:
       - "deckhand.enable=true"
-      - "deckhand.stop=true"                        # stop before sync, restart after
-      - "deckhand.paths=/opt/homelab/appdata/myapp" # host path(s) to sync
-      - "deckhand.priority=10"                      # lower = stopped first
+      - "deckhand.stop=true"
+      - "deckhand.path=/opt/appdata/myapp"
+      - "deckhand.exclude=logs,*.tmp"
+      - "deckhand.priority=10"
 
-  # Example: pre-exec hook instead of stopping (e.g. sqlite checkpoint)
-  paperless-ngx:
-    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+  # Example: multi-container app (app + postgres)
+  # Only the DB gets deckhand.path — app is stopped first via priority
+  myapp-postgres:
+    image: postgres:16-alpine
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=true"
+      - "deckhand.path=/opt/appdata/myapp"  # backs up postgres + app data
+      - "deckhand.priority=10"              # stopped after myapp-server
+
+  myapp-server:
+    image: myapp:latest
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=true"
+      - "deckhand.priority=5"   # stopped first, no path needed
+
+  # Example: live backup with pre-exec hook
+  myapp-sqlite:
+    image: myapp:latest
     labels:
       - "deckhand.enable=true"
       - "deckhand.stop=false"
-      - "deckhand.pre-exec=python manage.py dbbackup"
-      - "deckhand.paths=/opt/homelab/appdata/paperless-ngx"
+      - "deckhand.pre-exec=sqlite3 /data/app.db '.backup /data/app.db.bak'"
+      - "deckhand.path=/opt/appdata/myapp-sqlite"

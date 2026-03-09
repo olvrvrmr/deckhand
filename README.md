@@ -9,7 +9,7 @@ Deckhand discovers containers via Docker labels, optionally stops them before sy
 1. Discovers running containers with `deckhand.enable=true`
 2. Stops containers marked with `deckhand.stop=true` (in priority order)
 3. Runs any `deckhand.pre-exec` hooks
-4. rsyncs configured paths to the destination
+4. rsyncs each container's configured path to the destination
 5. Restarts stopped containers (always — even on error)
 6. Optionally fires a webhook with the result
 
@@ -18,10 +18,30 @@ Deckhand discovers containers via Docker labels, optionally stops them before sy
 | Label | Required | Description |
 |---|---|---|
 | `deckhand.enable` | yes | Set to `true` to include this container |
-| `deckhand.paths` | yes | Comma-separated host paths to sync |
+| `deckhand.path` | yes | Single host path to sync |
 | `deckhand.stop` | no | Stop container during sync (default: `false`) |
+| `deckhand.exclude` | no | Comma-separated rsync exclude patterns |
 | `deckhand.pre-exec` | no | Command to run inside the container before sync |
 | `deckhand.priority` | no | Stop/start order — lower number = stopped first (default: `0`) |
+
+### Multi-container apps (e.g. app + database)
+
+For services with a separate database container, only add `deckhand.path` to **one** container (typically the database). Add `deckhand.enable=true` and `deckhand.stop=true` to the app container(s) so they are stopped before the database — but omit `deckhand.path` since the data lives in the database container's directory.
+
+```yaml
+  myapp:
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=true"
+      - "deckhand.priority=5"   # stopped first
+
+  myapp-db:
+    labels:
+      - "deckhand.enable=true"
+      - "deckhand.stop=true"
+      - "deckhand.path=/opt/appdata/myapp"  # backs up everything under myapp/
+      - "deckhand.priority=10"  # stopped after app
+```
 
 ## Configuration
 
@@ -56,8 +76,8 @@ services:
     labels:
       - "deckhand.enable=true"
       - "deckhand.stop=true"
-      - "deckhand.paths=/opt/appdata/myapp"
-      - "deckhand.priority=10"
+      - "deckhand.path=/opt/appdata/myapp"
+      - "deckhand.exclude=logs,*.tmp"
 ```
 
 ## Recovery

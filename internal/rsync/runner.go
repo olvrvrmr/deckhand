@@ -14,19 +14,21 @@ type Runner struct {
 	DryRun     bool
 }
 
-func (r *Runner) Sync(src, dst string) error {
+func (r *Runner) Sync(src, dst string, excludes []string) error {
 	args := []string{
 		"-avz",
 		"--delete",
 		"--mkpath",
 		"-e", fmt.Sprintf("ssh -i %s -o StrictHostKeyChecking=no", r.SSHKeyPath),
 	}
+	for _, pattern := range excludes {
+		args = append(args, "--exclude="+pattern)
+	}
 	if r.DryRun {
 		args = append(args, "--dry-run")
 	}
 	args = append(args, r.ExtraArgs...)
 
-	// trailing slash on src = sync contents, not the directory itself
 	if !strings.HasSuffix(src, "/") {
 		src += "/"
 	}

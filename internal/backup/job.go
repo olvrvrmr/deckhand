@@ -78,7 +78,7 @@ func (j *Job) run(ctx context.Context) error {
 		}
 	}()
 
-	// run pre-exec hooks on running containers (stop=false only, or after stop would be pointless)
+	// run pre-exec hooks on running containers
 	for _, c := range containers {
 		if c.PreExec != "" && !c.Stop {
 			slog.Info("running pre-exec", "container", c.Name, "cmd", c.PreExec)
@@ -88,17 +88,15 @@ func (j *Job) run(ctx context.Context) error {
 		}
 	}
 
-	// sync paths for each container
+	// sync each container's path
 	for _, c := range containers {
-		if len(c.Paths) == 0 {
-			slog.Warn("no paths defined, skipping sync", "container", c.Name)
+		if c.Path == "" {
+			slog.Warn("no path defined, skipping sync", "container", c.Name)
 			continue
 		}
-		for _, path := range c.Paths {
-			dst := fmt.Sprintf("%s/%s", j.cfg.Destination, c.Name)
-			if err := j.rsync.Sync(path, dst); err != nil {
-				return err
-			}
+		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, c.Name)
+		if err := j.rsync.Sync(c.Path, dst, c.Excludes); err != nil {
+			return err
 		}
 	}
 
