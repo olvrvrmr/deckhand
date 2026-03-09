@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"time"
 
 	"github.com/olvrvrmr/deckhand/internal/config"
@@ -94,7 +95,7 @@ func (j *Job) run(ctx context.Context) error {
 			slog.Warn("no path defined, skipping sync", "container", c.Name)
 			continue
 		}
-		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, c.Name)
+		dst := fmt.Sprintf("%s/%s", j.cfg.Destination, filepath.Base(c.Path))
 		if err := j.rsync.Sync(c.Path, dst, c.Excludes); err != nil {
 			return err
 		}
