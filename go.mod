@@ -1,4 +1,4 @@
-module github.com/obornet/deckhand
+module github.com/olvrvrmr/deckhand
 
 go 1.26.1
 

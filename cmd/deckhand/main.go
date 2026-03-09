@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/obornet/deckhand/internal/backup"
-	"github.com/obornet/deckhand/internal/config"
-	"github.com/obornet/deckhand/internal/docker"
+	"github.com/olvrvrmr/deckhand/internal/backup"
+	"github.com/olvrvrmr/deckhand/internal/config"
+	"github.com/olvrvrmr/deckhand/internal/docker"
 	"github.com/robfig/cron/v3"
 )
 

@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/obornet/deckhand/internal/config"
-	"github.com/obornet/deckhand/internal/docker"
-	"github.com/obornet/deckhand/internal/notify"
-	"github.com/obornet/deckhand/internal/rsync"
+	"github.com/olvrvrmr/deckhand/internal/config"
+	"github.com/olvrvrmr/deckhand/internal/docker"
+	"github.com/olvrvrmr/deckhand/internal/notify"
+	"github.com/olvrvrmr/deckhand/internal/rsync"
 )
 
 type Job struct {

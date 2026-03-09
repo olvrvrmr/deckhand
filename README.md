@@ -40,7 +40,7 @@ Deckhand discovers containers via Docker labels, optionally stops them before sy
 ```yaml
 services:
   deckhand:
-    image: ghcr.io/obornet/deckhand:latest
+    image: ghcr.io/olvrvrmr/deckhand:latest
     container_name: deckhand
     restart: unless-stopped
     environment:
