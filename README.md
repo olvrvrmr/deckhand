@@ -127,6 +127,8 @@ Enable it by setting `METRICS_ADDR=:2112` in your environment. A
 pre-built Grafana dashboard is available at
 [docs/deckhand_backup.json](docs/deckhand_backup.json).
 
+![Grafana dashboard](/docs/screenshots/grafana_dashboard.jpg)
+
 Key metrics:
 
   Metric                              Description
